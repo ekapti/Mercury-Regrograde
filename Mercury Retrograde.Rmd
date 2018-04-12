@@ -1,0 +1,210 @@
+---
+title: "Mercury Retrograde"
+author: 'Engin Kapti'
+output: html_document
+date: '5 April 2018'
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r Global Options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8,
+                      echo = TRUE, message = FALSE, warning = FALSE)
+```
+```{r Libraries, echo=FALSE}
+# Load packages
+library('ggplot2') # visualization
+library('ggthemes') # visualization
+#library('scales') # visualization
+library('dplyr') # data manipulation
+library('mice') # imputation
+#library('randomForest') # classification algorithm
+```
+
+
+## 1. Introduction
+In this project, I look at the effects of Mercury Retrograde on car accidents,
+vehicles involved and fatalities. 
+
+Load the data, rename column names, convert into factor and reorder levels of Mercury Retrograde.
+```{r Load Data, echo=TRUE}
+mercury <- readxl::read_xlsx('NHTSA_MercuryRx_Data.xlsx')
+colnames(mercury)[4] <- 'sign'
+colnames(mercury)[5] <- 'speed'
+mercury$sign <- factor(mercury$sign)
+mercury$speed <- factor(mercury$speed, levels = c('xFD', 'FD', 'SD', 'xSDr', 'xSRr', 'SR', 'FR', 'xSRd', 'xSDd'))
+mercury <- subset(mercury, !is.na(speed))
+```
+
+# 1.1 Let's Explore the Data
+## 1.1.1 Fatalities
+```{r Fatalities}
+# What is the range of fatalities?
+range(mercury$Fatalities)
+# Let's look at the histogram
+
+qplot(data = mercury, x = Fatalities, binwidth = 1, 
+      xlab = 'Fatalities',
+      ylab = 'Count',
+      color = I('Black'), fill = I('#5760AB')) +
+  facet_wrap(~speed) 
+
+table(mercury$Fatalities)
+# Most of the accidents have one fatality and there are rare occasions of more than 9 fatalities and very rare more than 12 fatalities. Speeds of 'xFD', 'FD', and 'SD' are showing high numbers of fatalities but this could be due to number of days passed during each speed phase.
+
+```
+
+#1.1.2. Vehicles
+```{r Vehicles}
+# Let's look at the distibution of vehicles involved in an accident.
+table(mercury$Vehicles)
+qplot(data = mercury, x = Vehicles, binwidth = 1, 
+      xlim = c(0,5)) +
+  facet_wrap(~speed)
+```
+#1.1.3. Sign
+```{r Sign}
+table(mercury$sign)
+qplot(data = subset(mercury, !is.na(sign)), x = sign,
+            color = I('Black'), fill = I('#5760AB')) +
+  facet_wrap(~speed)
+```
+#1.1.4. Speed
+```{r Speed}
+table(mercury$speed)
+qplot(data = subset(mercury, !is.na(speed)), x = speed)
+
+```
+
+#1.2 Analyzing Means
+```{r mean tables}
+
+mercury.speed <- mercury %>%
+  group_by(speed) %>%
+  summarise(fatalities_mean = mean(Fatalities),
+            fatalities_n = length(Fatalities),
+            vehicle_mean = mean(Vehicles),
+            vehicle_n = length(Vehicles),
+            crash = n())
+
+print(mercury.speed)
+
+# Find daily mean crash count per speed, again use the alternative code. 
+mercury.date <- mercury %>%
+  group_by(speed, Date) %>%
+  summarise(n = n()) %>%
+  summarise(mean_crash = mean(n))
+
+print(mercury.date)
+
+# Combine two tables
+mercury.mean <- bind_cols(mercury.speed, mercury.date)
+# Drop the unnecessary variables
+mercury.mean <- mercury.mean[c(-5,-3, -7 )]  
+
+print(mercury.mean)
+
+# Now let's include the mean of the Entire Data in the table
+mercury.grand_mean <- mercury.mean %>%
+  summarize(fatalities_grand_mean = mean(fatalities_mean),
+            vehicle_grand_mean = mean(vehicle_mean),
+            crash_grand_mean = mean(mean_crash), 
+            n = n())
+
+
+
+# Now we have all the values let's plot to see the differences. 
+qplot(data = mercury.mean, y = fatalities_mean, x = speed)
+# Fatality mean is really low at 'FR' period compared to other periods but notice that difference is very small. 
+```
+
+## 2. Create 27 tables to calculate t-test scores
+#2.1 Tables
+```{r}
+#Fatalities Tables
+xFD_F <- mercury[which(mercury$speed == 'xFD'), c('Fatalities')]
+FD_F <- mercury[which(mercury$speed == 'FD'), c('Fatalities')]
+SD_F <- mercury[which(mercury$speed == 'SD'), c('Fatalities')]
+xSDr_F <- mercury[which(mercury$speed == 'xSDr'), c('Fatalities')]
+xSRr_F <- mercury[which(mercury$speed == 'xSRr'), c('Fatalities')]
+SR_F <- mercury[which(mercury$speed == 'SR'), c('Fatalities')]
+FR_F <- mercury[which(mercury$speed == 'FR'), c('Fatalities')]
+xSRd_F <- mercury[which(mercury$speed == 'xSRd'), c('Fatalities')]
+xSDd_F <- mercury[which(mercury$speed == 'xSDd'), c('Fatalities')]
+
+#Vehicles Tables
+
+xFD_V <- mercury[which(mercury$speed == 'xFD'), c('Vehicles')]
+FD_V <- mercury[which(mercury$speed == 'FD'), c('Vehicles')]
+SD_V <- mercury[which(mercury$speed == 'SD'), c('Vehicles')]
+xSDr_V <- mercury[which(mercury$speed == 'xSDr'), c('Vehicles')]
+xSRr_V <- mercury[which(mercury$speed == 'xSRr'), c('Vehicles')]
+SR_V <- mercury[which(mercury$speed == 'SR'), c('Vehicles')]
+FR_V <- mercury[which(mercury$speed == 'FR'), c('Vehicles')]
+xSRd_V <- mercury[which(mercury$speed == 'xSRd'), c('Vehicles')]
+xSDd_V <- mercury[which(mercury$speed == 'xSDd'), c('Vehicles')]
+
+# Crash Table
+trial <- mercury %>%
+  group_by(speed, Date) %>%
+  summarise(n = n())
+
+xFD_C <- trial[which(trial$speed == 'xFD'), c('n')]
+FD_C <- trial[which(trial$speed == 'FD'), c('n')]
+SD_C <- trial[which(trial$speed == 'SD'), c('n')]
+xSDr_C <- trial[which(trial$speed == 'xSDr'), c('n')]
+xSRr_C <- trial[which(trial$speed == 'xSRr'), c('n')]
+SR_C <- trial[which(trial$speed == 'SR'), c('n')]
+FR_C <- trial[which(trial$speed == 'FR'), c('n')]
+xSRd_C <- trial[which(trial$speed == 'xSRd'), c('n')]
+xSDd_C <- trial[which(trial$speed == 'xSDd'), c('n')]
+
+```
+#2.2 t-tests
+Now that we have created 27 tables, let's calculate the t-test scores.
+```{r}
+levels(mercury$speed)
+
+t.test(xFD_F$Fatalities, mercury$Fatalities)
+t.test(FD_F$Fatalities, mercury$Fatalities)
+t.test(SD_F$Fatalities, mercury$Fatalities)
+t.test(xSDr_F$Fatalities, mercury$Fatalities)
+t.test(xSRr_F$Fatalities, mercury$Fatalities)
+t.test(SR_F$Fatalities, mercury$Fatalities)
+t.test(FR_F$Fatalities, mercury$Fatalities) # significant difference
+t.test(xSRd_F$Fatalities, mercury$Fatalities)
+t.test(xSDd_F$Fatalities, mercury$Fatalities)
+
+t.test(xFD_V$Vehicles, mercury$Vehicles)
+t.test(FD_V$Vehicles, mercury$Vehicles)
+t.test(SD_V$Vehicles, mercury$Vehicles) # Significant difference with p=0.066
+t.test(xSDr_V$Vehicles, mercury$Vehicles)
+t.test(xSRr_V$Vehicles, mercury$Vehicles)
+t.test(SR_V$Vehicles, mercury$Vehicles)
+t.test(FR_V$Vehicles, mercury$Vehicles) # Significant difference with p-value = 0.02159
+t.test(xSRd_V$Vehicles, mercury$Vehicles)
+t.test(xSDd_V$Vehicles, mercury$Vehicles)
+
+t.test(xFD_C$n, trial$n)
+t.test(FD_C$n, trial$n)
+t.test(SD_C$n, trial$n)
+t.test(xSDr_C$n, trial$n)
+t.test(xSRr_C$n, trial$n)
+t.test(SR_C$n, trial$n)
+t.test(FR_C$n, trial$n) # significant difference
+t.test(xSRd_C$n, trial$n)
+t.test(xSDd_C$n, trial$n)
+```
+#2.3 Conclusion
+
+During the FR period number of fatalities and number of vehicles involved into an accident is significantly (p = 0.018 and p = 0.021) lower than general mean, and number of daily accidents barely misses signifance with p value = 0.117 
+
+
+
+
+
+
+
+
+
+
