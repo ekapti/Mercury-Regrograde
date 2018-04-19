@@ -1,6 +1,5 @@
-# Mercury-Regrograde
-Highway Fatal Crash Statistics Data Analysis Project
-I need to be able to determine the number of standard deviations above or below the mean for each variable (number of crashes, number of vehicles, number of fatalities) for nine different speeds of Mercury. I also need to know the p value for each of these measurements to determine the statistical significance of the deviations. 
+# Mercury-Retrograde
+This is a simple analysis (t-test) of the effects of Mercury retrograde on highway accidents and fatalities. 
 
 Using data from 1995 – 2004 ONLY (Average of 102–105 crashes per day)
 Analyze the standard deviation from the mean for each of the nine Mercury speeds. Sort the speeds in this order:
